@@ -1,40 +1,91 @@
 import urllib.request
+import csv
 import json
+import io
 
-url = "http://vpngate.net"
-req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-response = urllib.request.urlopen(req, timeout=30).read().decode('utf-8', errors='ignore')
+url = "http://www.vpngate.net/api/"
 
 servers = []
-lines = response.splitlines()
 
-for line in lines[2:]:
-    parts = line.split(',')
-    if len(parts) >= 15:
-        try:
-            ping = parts[3]
-            speed = int(parts[4])          # Speed in bps (Column 4)
-            country = parts[5]             # Country Name (Column 5)
-            country_code = parts[6]        # Country Code (Column 6)
-            ovpn_base64 = parts[14]        # Base64 Config (Column 14)
+try:
+    req = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": "Mozilla/5.0"
+        }
+    )
 
-            # Sirf 5 Mbps se tez aur valid config wale servers lein
-            if speed > 5000000 and len(ovpn_base64) > 100:
-                servers.append({
-                    "country": country,
-                    "country_code": country_code,
-                    "speed_mbps": round(speed / 1000000, 1),
-                    "ping": ping,
-                    "ovpn_base64": ovpn_base64
-                })
-        except Exception:
+    response = urllib.request.urlopen(
+        req,
+        timeout=30
+    )
+
+    data = response.read().decode(
+        "utf-8",
+        errors="ignore"
+    )
+
+    lines = data.splitlines()
+
+    # Skip API comment and CSV header
+    csv_data = "\n".join(lines[2:])
+
+    reader = csv.reader(io.StringIO(csv_data))
+
+    for cols in reader:
+
+        if len(cols) < 15:
             continue
 
-# Speed ke hisab se sort karein (sab se tez upar)
-servers.sort(key=lambda x: x["speed_mbps"], reverse=True)
+        try:
+            # Skip API footer
+            if cols[0].startswith("*"):
+                continue
 
-# Top 30 fast servers save karein
-with open("servers.json", "w", encoding="utf-8") as f:
-    json.dump(servers[:30], f, indent=2)
+            speed = int(cols[4])
+            config = cols[14]
 
-print(f"Saved {len(servers[:30])} servers successfully.")
+            # Filter servers
+            if speed > 5000000 and len(config) > 100:
+
+                servers.append({
+                    "country": cols[5],
+                    "country_code": cols[6],
+                    "speed_mbps": round(speed / 1000000, 2),
+                    "ping": cols[3],
+                    "ip": cols[1],
+                    "hostname": cols[0],
+                    "ovpn_base64": config
+                })
+
+        except (ValueError, IndexError):
+            continue
+
+    # Sort fastest servers first
+    servers.sort(
+        key=lambda x: x["speed_mbps"],
+        reverse=True
+    )
+
+    # Save top 30
+    top_servers = servers[:30]
+
+    with open(
+        "servers.json",
+        "w",
+        encoding="utf-8"
+    ) as f:
+
+        json.dump(
+            top_servers,
+            f,
+            indent=2,
+            ensure_ascii=False
+        )
+
+    print("Total servers found:", len(servers))
+    print("Total saved:", len(top_servers))
+    print("File saved: servers.json")
+
+except Exception as e:
+    print("Error:", str(e))
