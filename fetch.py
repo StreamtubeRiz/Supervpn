@@ -1,7 +1,7 @@
 import urllib.request
 import json
 
-url = "http://www.vpngate.net/api/iphone/"
+url = "https://www.vpngate.net/api/iphone/"
 
 try:
 req = urllib.request.Request(
@@ -11,8 +11,9 @@ headers={"User-Agent": "Mozilla/5.0"}
 
 with urllib.request.urlopen(req, timeout=30) as response:
     data = response.read()
+    status = response.status
 
-print("HTTP Status: 200")
+print("HTTP Status:", status)
 print("Response Size:", len(data), "bytes")
 
 text = data.decode("utf-8", errors="replace")
@@ -29,4 +30,5 @@ else:
     print("CSV header NOT detected")
 
 except Exception as e:
-print("FETCH ERROR:", str(e))
+print("FETCH ERROR:", repr(e))
+raise
