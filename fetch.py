@@ -12,14 +12,14 @@ for line in lines[2:]:
     parts = line.split(',')
     if len(parts) >= 15:
         try:
-            speed = int(parts[4])  # Speed in bps
             ping = parts[3]
-            country = parts[5]
-            country_code = parts[6]
-            ovpn_base64 = parts[14]
+            speed = int(parts[4])          # Speed in bps (Column 4)
+            country = parts[5]             # Country Name (Column 5)
+            country_code = parts[6]        # Country Code (Column 6)
+            ovpn_base64 = parts[14]        # Base64 Config (Column 14)
 
-            # Sirf 10 Mbps se tez aur valid config wale servers lein
-            if speed > 10000000 and len(ovpn_base64) > 100:
+            # Sirf 5 Mbps se tez aur valid config wale servers lein
+            if speed > 5000000 and len(ovpn_base64) > 100:
                 servers.append({
                     "country": country,
                     "country_code": country_code,
